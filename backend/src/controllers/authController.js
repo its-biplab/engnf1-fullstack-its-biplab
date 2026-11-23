@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 const { User } = require('../db');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -120,6 +121,128 @@ const register = async (req, res, next) => {
   }
 };
 
+/**
+ * Handle user login.
+ * POST /api/auth/login
+ */
+const login = async (req, res, next) => {
+  try {
+    const { email, password } = req.body || {};
+
+    // 1. Validate inputs: email (valid email, non-empty, normalized lowercase) and password (non-empty)
+    if (typeof email !== 'string') {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'A valid email address is required',
+        },
+      });
+    }
+
+    const trimmedEmail = email.trim().toLowerCase();
+    if (!trimmedEmail || trimmedEmail.length > 254 || !EMAIL_REGEX.test(trimmedEmail)) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'A valid email address is required',
+        },
+      });
+    }
+
+    if (typeof password !== 'string' || password.length === 0) {
+      return res.status(400).json({
+        error: {
+          code: 'VALIDATION_ERROR',
+          message: 'Password is required',
+        },
+      });
+    }
+
+    // 2. Look up user by lowercase email, explicitly selecting passwordHash
+    const user = await User.findOne({ email: trimmedEmail }).select('+passwordHash');
+    if (!user) {
+      return res.status(401).json({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Invalid email or password',
+        },
+      });
+    }
+
+    // 3. Verify password against passwordHash
+    const isMatch = await bcrypt.compare(password, user.passwordHash);
+    if (!isMatch) {
+      return res.status(401).json({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Invalid email or password',
+        },
+      });
+    }
+
+    // 4. Sign JWT with user id and role
+    const userId = user._id ? user._id.toString() : user.id;
+    const payload = {
+      id: userId,
+      role: user.role,
+    };
+
+    const jwtSecret = process.env.JWT_SECRET || 'triage_sync_jwt_secret_dev';
+    const expiresIn = process.env.JWT_EXPIRES_IN || '24h';
+
+    const token = jwt.sign(payload, jwtSecret, { expiresIn });
+
+    const userObj = user.toJSON();
+
+    return res.status(200).json({
+      token,
+      user: {
+        id: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: userObj.role,
+        createdAt: userObj.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * Get current authenticated user profile.
+ * GET /api/auth/me
+ */
+const getMe = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'User profile not found',
+        },
+      });
+    }
+
+    const userObj = user.toJSON();
+
+    return res.status(200).json({
+      user: {
+        id: userObj.id,
+        name: userObj.name,
+        email: userObj.email,
+        role: userObj.role,
+        createdAt: userObj.createdAt,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   register,
+  login,
+  getMe,
 };
