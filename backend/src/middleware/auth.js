@@ -17,11 +17,28 @@ const authenticateJWT = (req, res, next) => {
     });
   }
 
-  const token = authHeader.split(' ')[1];
+  const token = authHeader.slice(7).trim();
+  if (!token) {
+    return res.status(401).json({
+      error: {
+        code: 'UNAUTHENTICATED',
+        message: 'Authentication token is missing or malformed',
+      },
+    });
+  }
+
   const jwtSecret = process.env.JWT_SECRET || 'triage_sync_jwt_secret_dev';
 
   try {
     const decoded = jwt.verify(token, jwtSecret);
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Invalid token payload',
+        },
+      });
+    }
     req.user = decoded;
     next();
   } catch (err) {

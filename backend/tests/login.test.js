@@ -137,6 +137,17 @@ async function runLoginTests() {
     assert.strictEqual(meRes.body.user.email, 'tester@example.com');
     assert.strictEqual(meRes.body.user.name, 'Login Tester');
 
+    // 10. GET /api/auth/me when user is no longer in database
+    console.log('10. Testing /api/auth/me when user no longer exists in database...');
+    const deletedUserToken = jwt.sign(
+      { id: 'nonexistent_user_id', role: 'USER' },
+      process.env.JWT_SECRET || 'triage_sync_jwt_secret_dev',
+      { expiresIn: '24h' }
+    );
+    const deletedRes = await getMe(deletedUserToken);
+    assert.strictEqual(deletedRes.status, 401);
+    assert.strictEqual(deletedRes.body.error.code, 'UNAUTHENTICATED');
+
     console.log('\n>>> ALL LOGIN & AUTH TESTS PASSED SUCCESSFULLY! <<<');
   } finally {
     User.findOne = originalFindOne;

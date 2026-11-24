@@ -1,4 +1,7 @@
+'use client';
+
 import Link from "next/link";
+import { useAuth } from "@/context/auth-context";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -7,11 +10,13 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
-import { ArrowRight, LogIn, ShieldAlert } from "lucide-react";
+import { ArrowRight, LayoutDashboard, LogIn, ShieldAlert } from "lucide-react";
 
 export default function Home() {
+  const { isAuthenticated, user } = useAuth();
+
   return (
-    <div className="min-h-screen flex flex-col justify-center items-center bg-muted/40 font-sans px-4 py-8">
+    <div className="flex-1 flex flex-col justify-center items-center bg-muted/40 font-sans px-4 py-8">
       <main className="max-w-md w-full space-y-6">
         <Card className="shadow-sm">
           <CardHeader className="text-center space-y-2 pb-4">
@@ -27,18 +32,29 @@ export default function Home() {
           </CardHeader>
 
           <CardContent className="space-y-3 pt-2">
-            <Link href="/register" className="block w-full">
-              <Button size="lg" className="w-full">
-                Get Started
-                <ArrowRight className="ml-2 size-4" />
-              </Button>
-            </Link>
-            <Link href="/login" className="block w-full">
-              <Button variant="outline" size="lg" className="w-full">
-                <LogIn className="mr-2 size-4" />
-                Sign In
-              </Button>
-            </Link>
+            {isAuthenticated && user ? (
+              <Link href="/dashboard" className="block w-full">
+                <Button size="lg" className="w-full">
+                  <LayoutDashboard className="mr-2 size-4" />
+                  Go to Dashboard ({user.name})
+                </Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/register" className="block w-full">
+                  <Button size="lg" className="w-full">
+                    Get Started
+                    <ArrowRight className="ml-2 size-4" />
+                  </Button>
+                </Link>
+                <Link href="/login" className="block w-full">
+                  <Button variant="outline" size="lg" className="w-full">
+                    <LogIn className="mr-2 size-4" />
+                    Sign In
+                  </Button>
+                </Link>
+              </>
+            )}
           </CardContent>
         </Card>
       </main>

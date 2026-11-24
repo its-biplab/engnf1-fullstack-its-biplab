@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { loginUser } from '@/lib/api';
+import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,6 +30,7 @@ interface FormErrors {
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login, isAuthenticated } = useAuth();
 
   const isRegistered = searchParams.get('registered') === 'true';
   const prefillEmail = searchParams.get('email') || '';
@@ -46,6 +48,12 @@ function LoginFormContent() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push('/dashboard');
+    }
+  }, [isAuthenticated, router]);
 
   const validateField = (field: 'email' | 'password', value: string): string | undefined => {
     if (field === 'email') {
@@ -106,7 +114,8 @@ function LoginFormContent() {
       return;
     }
 
-    if (result.token) {
+    if (result.token && result.user) {
+      login(result.token, result.user);
       setLoginSuccess(true);
       setTimeout(() => {
         router.push('/dashboard');
@@ -115,7 +124,7 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col justify-center items-center bg-muted/40 font-sans px-4 py-8 sm:px-6 lg:px-8">
+    <div className="flex-1 w-full flex flex-col justify-center items-center bg-muted/40 font-sans px-4 py-8 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-4">
         <Card className="shadow-sm">
           <CardHeader className="text-center space-y-1 pb-4">
@@ -238,7 +247,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center font-sans text-muted-foreground">
+        <div className="flex-1 flex items-center justify-center font-sans text-muted-foreground">
           <Loader2 className="size-6 animate-spin" />
         </div>
       }

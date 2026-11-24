@@ -215,12 +215,21 @@ const login = async (req, res, next) => {
  */
 const getMe = async (req, res, next) => {
   try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).json({
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'Authentication required',
+        },
+      });
+    }
+
     const user = await User.findById(req.user.id);
     if (!user) {
-      return res.status(404).json({
+      return res.status(401).json({
         error: {
-          code: 'NOT_FOUND',
-          message: 'User profile not found',
+          code: 'UNAUTHENTICATED',
+          message: 'User account not found',
         },
       });
     }
