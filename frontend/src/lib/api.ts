@@ -188,3 +188,132 @@ export async function fetchCurrentUser(): Promise<{ user?: UserResponse; error?:
     };
   }
 }
+
+export interface TicketItem {
+  id: string;
+  externalId: string;
+  subject: string;
+  body: string;
+  autoCategory: string;
+  category: string;
+  priority: string;
+  status: string;
+  isHumanOverride: boolean;
+  isReviewed: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface ImportPayload {
+  tickets: Array<{
+    externalId?: string;
+    externalld?: string;
+    subject: string;
+    body: string;
+  }>;
+}
+
+export interface ImportResult {
+  importedCount: number;
+  updatedCount: number;
+  skippedOverrideCount: number;
+  total: number;
+}
+
+export async function importTickets(
+  payload: ImportPayload
+): Promise<{ result?: ImportResult; error?: ApiError }> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return {
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'No active session token found. Please sign in.',
+        },
+      };
+    }
+
+    const res = await fetch(`${API_BASE}/api/tickets/import`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return {
+        error: data.error || {
+          code: `HTTP_${res.status}`,
+          message: 'Failed to import tickets feed',
+        },
+      };
+    }
+
+    return { result: data };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unable to connect to the server';
+    return {
+      error: {
+        code: 'NETWORK_ERROR',
+        message: `Network error: ${message}`,
+      },
+    };
+  }
+}
+
+export async function fetchTickets(params?: {
+  status?: string;
+  category?: string;
+  priority?: string;
+}): Promise<{ tickets?: TicketItem[]; total?: number; error?: ApiError }> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return {
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'No active session token found. Please sign in.',
+        },
+      };
+    }
+
+    const query = new URLSearchParams();
+    if (params?.status) query.append('status', params.status);
+    if (params?.category) query.append('category', params.category);
+    if (params?.priority) query.append('priority', params.priority);
+
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+
+    const res = await fetch(`${API_BASE}/api/tickets${queryString}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return {
+        error: data.error || {
+          code: `HTTP_${res.status}`,
+          message: 'Failed to retrieve tickets',
+        },
+      };
+    }
+
+    return { tickets: data.tickets || [], total: data.total || 0 };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unable to connect to the server';
+    return {
+      error: {
+        code: 'NETWORK_ERROR',
+        message: `Network error: ${message}`,
+      },
+    };
+  }
+}

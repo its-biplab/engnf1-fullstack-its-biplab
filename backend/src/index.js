@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const { connectDB } = require('./db');
 const authRouter = require('./routes/auth');
+const ticketsRouter = require('./routes/tickets');
 const errorHandler = require('./middleware/errorHandler');
 
 const app = express();
@@ -23,6 +24,9 @@ app.get('/api/health', (req, res) => {
 
 // Authentication routes
 app.use('/api/auth', authRouter);
+
+// Ticket routes
+app.use('/api/tickets', ticketsRouter);
 
 // 404 handler for undefined routes matching error envelope
 app.use((req, res) => {
