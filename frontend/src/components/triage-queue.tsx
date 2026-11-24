@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useTransition } from 'react';
 import { fetchTickets, TicketItem, ImportResult } from '@/lib/api';
 import { TicketImportPanel } from '@/components/ticket-import-panel';
+import { TicketDetailPanel } from '@/components/ticket-detail-panel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +77,7 @@ export function TriageQueue() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [importNotice, setImportNotice] = useState<string | null>(null);
+  const [selectedTicketId, setSelectedTicketId] = useState<string | null>(null);
 
   // Debounce search term by 300ms
   useEffect(() => {
@@ -403,7 +405,16 @@ export function TriageQueue() {
             {tickets.map((ticket) => (
               <div
                 key={ticket.id || ticket.externalId}
-                className="p-3.5 sm:p-5 hover:bg-muted/30 transition-colors space-y-2.5"
+                onClick={() => setSelectedTicketId(ticket.id)}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedTicketId(ticket.id);
+                  }
+                }}
+                className="p-3.5 sm:p-5 hover:bg-muted/50 transition-colors space-y-2.5 cursor-pointer outline-none focus-visible:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring"
               >
                 {/* Header Row: ExternalId, Badges, Dates */}
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
@@ -520,6 +531,12 @@ export function TriageQueue() {
           </div>
         </CardFooter>
       )}
+
+      {/* Ticket Detail & Audit History Modal */}
+      <TicketDetailPanel
+        ticketId={selectedTicketId}
+        onClose={() => setSelectedTicketId(null)}
+      />
     </Card>
   );
 }

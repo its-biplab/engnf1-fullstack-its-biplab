@@ -198,6 +198,7 @@ export interface TicketItem {
   category: string;
   priority: string;
   status: string;
+  assigneeId?: string | null;
   isHumanOverride: boolean;
   isReviewed: boolean;
   createdAt: string;
@@ -335,6 +336,66 @@ export async function fetchTickets(
       pageSize: result.pageSize || 10,
       total: result.total !== undefined ? result.total : items.length,
       totalPages: result.totalPages !== undefined ? result.totalPages : 1,
+    };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Unable to connect to the server';
+    return {
+      error: {
+        code: 'NETWORK_ERROR',
+        message: `Network error: ${message}`,
+      },
+    };
+  }
+}
+
+export interface TicketEventItem {
+  id: string;
+  ticketId: string;
+  field: string;
+  oldValue: any;
+  newValue: any;
+  actor: string;
+  createdAt: string;
+}
+
+export interface TicketDetailResponse {
+  ticket?: TicketItem;
+  events?: TicketEventItem[];
+  error?: ApiError;
+}
+
+export async function fetchTicketById(id: string): Promise<TicketDetailResponse> {
+  try {
+    const token = getAuthToken();
+    if (!token) {
+      return {
+        error: {
+          code: 'UNAUTHENTICATED',
+          message: 'No active session token found. Please sign in.',
+        },
+      };
+    }
+
+    const res = await fetch(`${API_BASE}/api/tickets/${encodeURIComponent(id)}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      return {
+        error: data.error || {
+          code: `HTTP_${res.status}`,
+          message: 'Failed to retrieve ticket details',
+        },
+      };
+    }
+
+    return {
+      ticket: data.ticket,
+      events: data.events || [],
     };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unable to connect to the server';

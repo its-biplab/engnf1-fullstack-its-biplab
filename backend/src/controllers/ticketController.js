@@ -1,4 +1,5 @@
-const { Ticket } = require('../db');
+const mongoose = require('mongoose');
+const { Ticket, TicketEvent } = require('../db');
 const { classifyTicket } = require('../utils/classifier');
 
 const ALLOWED_STATUSES = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
@@ -319,7 +320,48 @@ const getTickets = async (req, res, next) => {
   }
 };
 
+/**
+ * Fetch a single ticket by ID along with its audit events history.
+ * GET /api/tickets/:id
+ */
+const getTicketById = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+
+    // Validate ObjectId format cleanly to prevent unhandled cast errors
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Ticket not found',
+        },
+      });
+    }
+
+    const ticket = await Ticket.findById(id);
+    if (!ticket) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Ticket not found',
+        },
+      });
+    }
+
+    // Query audit events ordered chronologically descending (newest first)
+    const events = await TicketEvent.find({ ticketId: ticket._id }).sort({ createdAt: -1 });
+
+    return res.status(200).json({
+      ticket: ticket.toJSON(),
+      events: events.map((e) => e.toJSON()),
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   importTickets,
   getTickets,
+  getTicketById,
 };
