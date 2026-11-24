@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
-    "test": "node tests/register.test.js && node tests/login.test.js && node tests/tickets_import.test.js"
+    "test": "node tests/register.test.js && node tests/login.test.js && node tests/tickets_import.test.js && node tests/tickets_list.test.js"
   },
   "keywords": [],
   "author": "",

@@ -266,11 +266,28 @@ export async function importTickets(
   }
 }
 
-export async function fetchTickets(params?: {
+export interface FetchTicketsParams {
   status?: string;
   category?: string;
   priority?: string;
-}): Promise<{ tickets?: TicketItem[]; total?: number; error?: ApiError }> {
+  q?: string;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface FetchTicketsResponse {
+  data?: TicketItem[];
+  tickets?: TicketItem[];
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  totalPages?: number;
+  error?: ApiError;
+}
+
+export async function fetchTickets(
+  params?: FetchTicketsParams
+): Promise<FetchTicketsResponse> {
   try {
     const token = getAuthToken();
     if (!token) {
@@ -286,6 +303,9 @@ export async function fetchTickets(params?: {
     if (params?.status) query.append('status', params.status);
     if (params?.category) query.append('category', params.category);
     if (params?.priority) query.append('priority', params.priority);
+    if (params?.q) query.append('q', params.q);
+    if (params?.page) query.append('page', params.page.toString());
+    if (params?.pageSize) query.append('pageSize', params.pageSize.toString());
 
     const queryString = query.toString() ? `?${query.toString()}` : '';
 
@@ -295,18 +315,27 @@ export async function fetchTickets(params?: {
       },
     });
 
-    const data = await res.json();
+    const result = await res.json();
 
     if (!res.ok) {
       return {
-        error: data.error || {
+        error: result.error || {
           code: `HTTP_${res.status}`,
           message: 'Failed to retrieve tickets',
         },
       };
     }
 
-    return { tickets: data.tickets || [], total: data.total || 0 };
+    const items = result.data || result.tickets || [];
+
+    return {
+      data: items,
+      tickets: items,
+      page: result.page || 1,
+      pageSize: result.pageSize || 10,
+      total: result.total !== undefined ? result.total : items.length,
+      totalPages: result.totalPages !== undefined ? result.totalPages : 1,
+    };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Unable to connect to the server';
     return {
